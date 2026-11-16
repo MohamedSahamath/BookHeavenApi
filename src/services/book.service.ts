@@ -1,3 +1,4 @@
+
 import { FilterQuery, Types } from 'mongoose';
 import { Book, IBook, getSellingPrice } from '../models/book.model';
 import { Author } from '../models/author.model';
@@ -5,12 +6,11 @@ import { Category } from '../models/category.model';
 import { Inventory } from '../models/inventory.model';
 import { StockMovement } from '../models/stockMovement.model';
 import { Order } from '../models/order.model';
-import { User } from '../models/user.model';
 import { ApiError } from '../utils/apiError';
 import { uploadImage } from '../config/cloudinary';
 import { createInventoryForBook, getStockMap } from './inventory.service';
 
-//Helpers
+//Helpers 
 export const slugify = (text: string): string =>
   text
     .toLowerCase()
@@ -27,7 +27,7 @@ const parseAuthors = (value: unknown): string[] => {
       const parsed = JSON.parse(value);
       if (Array.isArray(parsed)) return parsed.map(String);
     } catch {
-      
+
     }
     return value.split(',').map((v) => v.trim()).filter(Boolean);
   }
@@ -120,15 +120,7 @@ export const listBooks = async (query: BookListQuery, page: number, limit: numbe
   return { books: await attachStock(books), total, page, limit };
 };
 
-const recordView = async (userId: string, bookId: string) => {
-  await User.updateOne({ _id: userId }, { $pull: { recentlyViewed: bookId } });
-  await User.updateOne(
-    { _id: userId },
-    { $push: { recentlyViewed: { $each: [bookId], $position: 0, $slice: 20 } } }
-  );
-};
-
-export const getBookById = async (bookId: string, options: { viewerId?: string; countView?: boolean } = {}) => {
+export const getBookById = async (bookId: string, options: { countView?: boolean } = {}) => {
   const book = await Book.findById(bookId)
     .populate('authors', 'name biography nationality')
     .populate('category', 'name slug');
@@ -136,7 +128,6 @@ export const getBookById = async (bookId: string, options: { viewerId?: string; 
 
   if (options.countView) {
     await Book.updateOne({ _id: bookId }, { $inc: { viewCount: 1 } });
-    if (options.viewerId) await recordView(options.viewerId, bookId);
   }
 
   const [withStock] = await attachStock([book]);
@@ -265,8 +256,6 @@ export const updateBook = async (
   return getBookById(bookId);
 };
 
-// "Delete when appropriate": if a book was ever ordered or restocked we keep it (soft delete),
-// otherwise it is removed completely.
 export const deleteBook = async (bookId: string) => {
   const book = await Book.findById(bookId);
   if (!book) throw new ApiError(404, 'Book not found');
@@ -290,7 +279,7 @@ export const deleteBook = async (bookId: string) => {
   return { softDeleted: false, message: 'Book deleted' };
 };
 
-// ---------- Categories ----------
+//Categories
 export const getCategoriesWithCounts = async () => {
   const [categories, counts] = await Promise.all([
     Category.find({ isActive: true }).sort({ name: 1 }),
@@ -320,7 +309,7 @@ export const deleteCategory = async (id: string) => {
   if (!result) throw new ApiError(404, 'Category not found');
 };
 
-// ---------- Authors ----------
+//Authors
 export const listAuthors = async (search: string | undefined, page: number, limit: number, skip: number) => {
   const filter: Record<string, unknown> = {};
   if (search) filter.name = new RegExp(escapeRegex(search), 'i');
